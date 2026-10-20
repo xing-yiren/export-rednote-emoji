@@ -5,11 +5,15 @@
 - macOS，Chrome（实测 155.0.8059.85）或 Edge（Chromium 内核，待实测版本 ≥ 120）
 - 需要能正常登录小红书网页版
 
-## 安装（开发者模式）
+## 安装
 
-1. 构建：`npm install && npm run build`，产物在 `dist/`。
-2. 打开 `chrome://extensions`（Edge 为 `edge://extensions`），开启“开发者模式”。
-3. 点击“加载已解压的扩展程序”，选择项目下的 `dist/` 目录。
+参见 [安装说明](./INSTALL.md)。macOS 用户可直接使用 `RednoteEmoji-<版本>.dmg` 安装包。
+
+开发者方式：
+
+1. `npm install && npm run build`，产物在 `dist/`
+2. 打开 `chrome://extensions`（Edge 为 `edge://extensions`），开启“开发者模式”
+3. 点击“加载已解压的扩展程序”，选择 `dist/` 目录
 
 ## 使用流程
 
