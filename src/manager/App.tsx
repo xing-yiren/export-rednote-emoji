@@ -194,6 +194,9 @@ export function App() {
         <p className="muted small">
           采集范围：仅包含本页已被渲染（滚动或展开时加载）的评论图片，不代表整帖所有评论或你的收藏库。头像与笔记主图已排除。
         </p>
+        <p className="muted small">
+          关于动图：小红书服务端会将评论图片统一转码为 WebP，网页端拿到的通常是静态帧。手机 App 中显示的动图在网页端可能只显示为静态图，本工具只能保存实际获取到的字节。
+        </p>
 
         {visible.length === 0 ? (
           <div className="empty">

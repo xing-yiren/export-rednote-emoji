@@ -90,6 +90,8 @@ export async function exportZip(noteUrl: string, sessionId: string, selected: Ca
       '仅包含本页已渲染的评论图片，不代表整帖或收藏库全部图片',
       '保存的是实际获取的响应字节，格式可能已被平台转换为 WebP',
       'animated 为 null 表示无法判断',
+      '小红书服务端会将评论图片统一转码为 WebP；P0 实测未见动画 WebP（无 ANIM chunk），手机端显示的动图在网页端资源通常为静态帧',
+      '不包含带签名的资源地址、Cookie 或完整评论文本',
     ],
     files: manifest,
   };
