@@ -5,7 +5,7 @@
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-4285F4)](https://developer.chrome.com/docs/extensions/develop/migrate)
 [![Chrome](https://img.shields.io/badge/Chrome-%E2%89%A5120-brightgreen)](https://www.google.com/chrome/)
 [![Tests](https://img.shields.io/badge/tests-49%20passed-success)](#开发者说明)
-[![License](https://img.shields.io/badge/license-unlicensed-lightgrey)](#许可)
+[![License](https://img.shields.io/badge/license-MIT-blue)](#许可)
 
 <img src="docs/images/manager.png" width="900" alt="管理页截图">
 
@@ -235,9 +235,10 @@ npm run release
 
 ## 免责声明
 
-本项目仅用于个人备份自己可见、可正常访问的图片，不提供绕过登录、权限或风控的能力。
-请遵守小红书的服务条款与相关法律法规；因使用产生的风险由使用者自行承担。
+本项目不提供绕过登录、权限或风控的能力。请遵守小红书服务条款与相关法律法规，因使用产生的风险由使用者自行承担。
 
 ## 许可
 
-暂未选择开源许可（All rights reserved）。如需以开源方式分发，请先补充 LICENSE。
+[MIT License](LICENSE) © xing-yiren
+
+本项目仅用于个人备份自己可见、可正常访问的图片。小红书、小红书表情包等名称与素材归其权利人所有，本项目与小红书官方无关。
