@@ -24,4 +24,47 @@
 
 ## 结果
 
-（等待探针结果）
+## 探针结果分析（2026-10-20，样本：docs/rednote-probe-1792481066812.json）
+
+页面：`https://www.xiaohongshu.com/explore/6ad715b3000000000c00e6f9?...`，标题“收藏一些自己很喜欢的表情包”。
+
+### DOM 结构（已核实）
+
+| 元素 | 选择器 | 备注 |
+| --- | --- | --- |
+| 笔记详情根 | `#noteContainer.note-container` | 与页面其他区域（用户主页 feeds）共存 |
+| 评论滚动区 | `.interaction-container .note-scroller` | 评论列表与笔记正文共享该滚动区 |
+| 评论项 | `.comment-item`，`id="comment-<commentId>"` | **评论 ID 稳定可用**；CP 形如 `6ad715eb0000000012032744` |
+| 一级/回复 | `.parent-comment` 包裹一级评论 | 回复结构待补充样本 |
+| 作者头像 | `.comment-item .avatar img.avatar-item` | `data-user-id="..."` **稳定用户 ID** |
+| 作者链接 | `.comment-item .avatar a[href="/user/profile/<userId>?..."]` | 同时带 xsec_token |
+| 评论图片 | `.comment-item .comment-picture .img-box img.inner` | 仅此位置为评论正文图片 |
+
+区分依据：**用结构（`.comment-picture` 作用域）区分，而非尺寸**。头像约为 120x120（消费 40x40），评论图 naturalSize 曲线为 358~640，但布局尺寸会缩放到 120~160，不能凭布局尺寸判断。
+
+### 资源与网络（已核实）
+
+- 评论图 host：`sns-webpic-qc.xhscdn.com`；头像 host：`sns-avatar-qc.xhscdn.com`；UI 图标：`fe-static.xhscdn.com`。
+- URL 形如 `https://sns-webpic-qc.xhscdn.com/<yyyymmddhhmm>/<md5>/comment/<imageId>!nc_n_webp_mw_1`，带时效路径段（日期）与签名式前缀，**不带 xsec_token 亦可在新标签页直接请求**。
+- 扩展上下文 `fetch(... credentials:'omit')` 全部 200，**无需 Cookie、无 CORS 问题**（需 host permission）。
+- 去掉 `!nc_n_webp_mw_1` 或换成其它后缀均 **403**：不能推测原始格式 URL，只能保存实际拿到的响应字节。
+- 服务端**统一返回 WebP**（`image/webp`），即评论图即便原为 PNG/GIF，前端拿到的也是 WebP；动态性只能依据该 WebP 是否含 `ANIM` chunk 判断。
+- 未发现 canvas 渲染；无 blob URL。懒加载属性仅 `src`（原文为 http，浏览器升级为 https）。
+
+### 格式探测实现修正
+
+- 初版 WebP 动画探测用子串搜索 `ANIM`，在压缩数据中误报（“imagin” 等）。已改为**严格 RIFF chunk 遍历**。
+- SVG 曾被误判为 HTML；已按 `<?xml`/`<svg` 前缀识别。
+- 样本中评论图均为**静态 WebP**（chunks: VP8X/ALPH/ICCP/VP8 /EXIF，无 ANIM）。
+
+### 环境
+
+- macOS，Google Chrome 155.0.8059.85。Edge 未安装，P3 再测。
+
+### 待补充样本
+
+- [ ] 动态表情（GIF/动画 WebP）在评论中的字节与 ANIM chunk 情况
+- [ ] 回复评论 DOM 结构（`.comment-item` 下回复列表）
+- [ ] 大图/长图注释下评论图片加载上限
+- [ ] 权限收敛：实测只需 `https://sns-webpic-qc.xhscdn.com/*` + `https://www.xiaohongshu.com/*`
+

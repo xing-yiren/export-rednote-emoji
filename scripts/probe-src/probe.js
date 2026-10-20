@@ -141,12 +141,23 @@
       return { format: 'gif', animated: frames > 1, animatedEvidence: frames + ' graphic control ext' };
     }
     if (ascii(0, 4) === 'RIFF' && ascii(8, 4) === 'WEBP') {
-      const anim = findAscii(b, 'ANIM', 0, 4096);
-      return { format: 'webp', animated: !!anim, animatedEvidence: anim ? 'ANIM chunk' : 'no ANIM chunk in first 4KiB' };
+      // 严格按 RIFF chunk 遍历，避免在二进制载荷中误匹配 'ANIM' 字样
+      const u32 = (o) => b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24);
+      let pos = 12, hasAnim = false, hasVP8X = false, hasALPH = false;
+      while (pos + 8 <= b.length) {
+        const cc = ascii(pos, 4), size = u32(pos + 4) >>> 0;
+        if (cc === 'ANIM') hasAnim = true;
+        if (cc === 'VP8X') hasVP8X = true;
+        if (cc === 'ALPH') hasALPH = true;
+        pos += 8 + size + (size & 1);
+        if (size > b.length) break;
+      }
+      return { format: 'webp', animated: hasAnim, animatedEvidence: hasAnim ? 'ANIM chunk' : 'no ANIM chunk', chunks: { VP8X: hasVP8X, ALPH: hasALPH } };
     }
     if (ascii(4, 4) === 'ftyp' && /avi[fs]/.test(ascii(8, 4))) return { format: 'avif', animated: null };
-    const head = ascii(0, 120).trimStart();
-    if (head.startsWith('<')) return { format: 'html', animated: false, note: 'received HTML (likely login/error page)' };
+    const head = ascii(0, 120);
+    if (head.startsWith('<svg') || head.startsWith('<?xml')) return { format: 'svg', animated: null };
+    if (head.trimStart().startsWith('<')) return { format: 'html', animated: false, note: 'received HTML (likely login/error page)' };
     return { format: 'unknown', animated: null };
   }
   function findAscii(b, s, from, to) {
