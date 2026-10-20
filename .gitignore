@@ -13,3 +13,4 @@ docs/rednote-probe-*.json
 # 系统与日志
 *.log
 .DS_Store
+.build/

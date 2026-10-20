@@ -11,8 +11,18 @@
 - 仅采集**已渲染**的评论图片（需手动滚动/展开），不代表整帖或收藏库全部。
 - 平台返回 HTML/403 时（链接过期、需重新加载页面）会如实标记失败，不做猜测性重试。
 
+## 安装
+
+不熟悉开发环境？直接使用现成的安装包：
+
+- macOS：`release/RednoteEmoji-<版本>.dmg` — 双击安装器，自动准备好扩展并引导在浏览器中加载
+- 通用：`release/RednoteEmoji-<版本>.zip`
+
+详见 [docs/INSTALL.md](./docs/INSTALL.md)（含“为什么扩展无法双击直装”的说明）。
+
 ## 文档
 
+- 安装：[docs/INSTALL.md](./docs/INSTALL.md)
 - 使用与安装：[docs/USAGE.md](./docs/USAGE.md)
 - P0 验证记录：[docs/VALIDATION.md](./docs/VALIDATION.md)
 

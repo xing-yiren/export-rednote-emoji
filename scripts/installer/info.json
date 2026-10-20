@@ -1,0 +1,5 @@
+{
+  "name": "小红书表情包导出",
+  "bundleId": "io.github.rednote-emoji.installer",
+  "note": "安装器把 extension/ 复制到 ~/Library/Application Support/RednoteEmoji/extension，并引导在浏览器扩展页加载"
+}
