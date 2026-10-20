@@ -28,7 +28,11 @@ export interface CollectionState {
   commentDomPresent: boolean;
 }
 
-export function useCollection(): CollectionState & { reload: () => Promise<void> } {
+export function useCollection(): CollectionState & {
+  reload: () => Promise<void>;
+  /** 由任务队列回写状态，保持界面与 IndexedDB 一致 */
+  applyUpdates: (updates: Candidate[]) => void;
+} {
   const [state, setState] = useState<CollectionState>({
     ready: false, session: null, active: null, candidates: [], overflow: false, lastScanAt: null, commentDomPresent: true,
   });
@@ -147,5 +151,14 @@ export function useCollection(): CollectionState & { reload: () => Promise<void>
     void chrome.runtime.sendMessage({ type: MSG.scanNow }).catch(() => {});
   }, [state.ready, state.session?.id]);
 
-  return { ...state, reload: load };
+  const applyUpdates = useCallback((updates: Candidate[]) => {
+    if (updates.length === 0) return;
+    setState((s) => {
+      const byId = new Map(s.candidates.map((c) => [c.id, c]));
+      for (const u of updates) if (byId.has(u.id)) byId.set(u.id, u);
+      return { ...s, candidates: [...byId.values()] };
+    });
+  }, []);
+
+  return { ...state, reload: load, applyUpdates };
 }

@@ -14,15 +14,14 @@ export default defineConfig({
     outDir: resolve(import.meta.dirname, 'dist'),
     emptyOutDir: false,
     target: 'chrome120',
-    // 管理页位于 /manager/，资源需以相对路径引用
-    assetsDir: '../assets',
     rollupOptions: {
       input: {
         manager: resolve(import.meta.dirname, 'src/manager/index.html'),
         background: resolve(import.meta.dirname, 'src/background/index.ts'),
       },
       output: {
-        entryFileNames: (chunk) => (chunk.name === 'background' ? 'background.js' : 'assets/[name]-[hash].js'),
+        entryFileNames: (chunk) =>
+          chunk.name === 'background' ? 'background.js' : 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',
       },

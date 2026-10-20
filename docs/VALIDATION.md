@@ -22,6 +22,13 @@
 - [ ] 跨源 / 签名 URL / 重定向 / blob / 懒加载边界
 - [ ] Edge 最低实测版本
 
+## P2 自动验证
+
+- 导出计划（`src/shared/zipPlan.ts`）：目录结构、同哈希只写一份并保留全部来源、总量与张数上限、ZIP 解包字节一致（`tests/unit/zip-plan.test.ts`）。
+- 管理页租约（`src/services/lease.ts`）：单持有者、过期接管、不会误释放他人租约（`tests/unit/lease.test.ts`）。
+- 队列恢复：管理页刷新后把 `queued`/`fetching` 恢复为可重试状态，缺失 asset 的 `ready` 回退为 `found`。
+- 429：读取 `Retry-After` 并暂停整个队列；401/403 不自动重试。
+
 ## 结果
 
 ## 探针结果分析（2026-10-20，样本：docs/rednote-probe-1792481066812.json）

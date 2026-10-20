@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCollection } from './useCollection';
 import { useJobs } from './useJobs';
+import { ManagerLease } from '../services/lease';
 import { db } from '../services/db';
 import { downloadCandidate } from '../services/download';
 import { exportZip } from './exportZip';
@@ -16,22 +17,28 @@ const STATUS_LABEL: Record<Candidate['status'], string> = {
 };
 
 export function App() {
-  const { ready, session, active, candidates, overflow, reload, commentDomPresent } = useCollection();
+  const { ready, session, active, candidates, overflow, commentDomPresent, applyUpdates } = useCollection();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [authorFilter, setAuthorFilter] = useState<string>('');
   const [onlySelectedAuthor, setOnlySelectedAuthor] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'ready' | 'failed'>('all');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const onUpdated = (updates: Candidate[]) => {
-    // 由 useCollection 的数据源驱动；这里仅用于本地错误展示
-    for (const u of updates) if (u.status === 'failed') setError(`${u.errorCode ?? '获取失败'}`);
-  };
-  const { job, run, cancel } = useJobs(onUpdated);
+  const onUpdated = useCallback((updates: Candidate[]) => {
+    applyUpdates(updates);
+  }, [applyUpdates]);
+  const lease = useMemo(() => (session?.id ? new ManagerLease(session.id) : null), [session?.id]);
+  const { job, run, cancel, recover } = useJobs(onUpdated, lease);
 
   // 默认全选：新会话时全选，后续新到达的图片也默认选中（用户手动取消的不受影响）
   const touchedRef = useRef(false);
+  useEffect(() => {
+    if (session?.id) void recover(session.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id]);
+
   useEffect(() => {
     setSelectedIds(new Set(candidates.map((c) => c.id)));
     touchedRef.current = false;
@@ -58,13 +65,24 @@ export function App() {
   }, [candidates]);
 
   const visible = useMemo(() => {
-    if (!authorFilter) return candidates;
-    return candidates.filter((c) =>
-      onlySelectedAuthor
-        ? c.sources.every((s) => (s.authorId ?? s.authorName) === authorFilter)
-        : c.sources.some((s) => (s.authorId ?? s.authorName) === authorFilter),
-    );
-  }, [candidates, authorFilter, onlySelectedAuthor]);
+    let list = candidates;
+    if (authorFilter) {
+      list = list.filter((c) =>
+        onlySelectedAuthor
+          ? c.sources.every((s) => (s.authorId ?? s.authorName) === authorFilter)
+          : c.sources.some((s) => (s.authorId ?? s.authorName) === authorFilter),
+      );
+    }
+    if (statusFilter !== 'all') list = list.filter((c) => c.status === statusFilter);
+    return list;
+  }, [candidates, authorFilter, onlySelectedAuthor, statusFilter]);
+
+  // 文件层去重：同哈希的候选共享同一 asset，界面标注“内容重复”
+  const hashCount = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of candidates) if (c.assetHash) m.set(c.assetHash, (m.get(c.assetHash) ?? 0) + 1);
+    return m;
+  }, [candidates]);
 
   const selected = visible.filter((c) => selectedIds.has(c.id));
   const readyCount = candidates.filter((c) => c.status === 'ready').length;
@@ -100,14 +118,14 @@ export function App() {
       setNotice('所选图片已全部就绪，可直接保存。');
       return;
     }
-    await run(targets);
-    await reload();
+    if (!(await run(targets))) setError('另一个管理页正在执行获取/导出队列，请稍后再试。');
   };
 
   const retryFailed = async () => {
+    setError(null);
     const targets = candidates.filter((c) => c.status === 'failed');
-    await run(targets);
-    await reload();
+    if (targets.length === 0) return;
+    if (!(await run(targets))) setError('另一个管理页正在执行获取/导出队列，请稍后再试。');
   };
 
   const saveOne = async (c: Candidate) => {
@@ -171,6 +189,11 @@ export function App() {
         {authorFilter && (
           <label className="small"><input type="checkbox" checked={onlySelectedAuthor} onChange={(e) => setOnlySelectedAuthor(e.target.checked)} /> 仅该作者独立评论</label>
         )}
+        <label className="small">状态：<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}>
+          <option value="all">全部</option>
+          <option value="ready">已就绪</option>
+          <option value="failed">失败</option>
+        </select></label>
         <label className="small"><input type="checkbox" checked={visible.every((c) => selectedIds.has(c.id)) && visible.length > 0} onChange={selectAll} /> 全选</label>
         <span className="small muted">已选 {selected.length} / 显示 {visible.length}</span>
       </header>
@@ -213,6 +236,7 @@ export function App() {
                 onToggle={() => toggle(c.id)}
                 onSave={() => void saveOne(c)}
                 busy={busy === c.id}
+                duplicateCount={c.assetHash ? (hashCount.get(c.assetHash) ?? 1) - 1 : 0}
               />
             ))}
           </div>
@@ -249,12 +273,14 @@ function Card({
   onToggle,
   onSave,
   busy,
+  duplicateCount,
 }: {
   candidate: Candidate;
   selected: boolean;
   onToggle: () => void;
   onSave: () => void;
   busy: boolean;
+  duplicateCount: number;
 }) {
   const [preview, setPreview] = useState<{ url: string; format: string; animated: boolean | null; size: string } | null>(null);
   const [previewError, setPreviewError] = useState(false);
@@ -300,7 +326,8 @@ function Card({
         <button className="todl" disabled={busy} onClick={(e) => { e.stopPropagation(); onSave(); }}>保存</button>
       )}
       <div className="meta">
-        <span title={author}>{author}{extraSources > 0 ? ` +${extraSources}` : ''}</span>
+        <span title={author}>{author}{extraSources > 0 ? ` · 另有 ${extraSources} 处来源` : ''}</span>
+        {duplicateCount > 0 && <span className="muted small">内容与其它 {duplicateCount} 张相同</span>}
         <span className="muted">
           {preview?.size || (candidate.naturalSize ? `${candidate.naturalSize[0]}×${candidate.naturalSize[1]}` : '')}{' '}
           <span className={`status ${candidate.status}`}>{STATUS_LABEL[candidate.status]}</span>

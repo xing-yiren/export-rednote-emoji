@@ -18,14 +18,25 @@ export const LIMITS = {
 
 export class FetchError extends Error {
   constructor(
-    public code: 'http' | 'network' | 'timeout' | 'too_large' | 'empty' | 'not_image' | 'permission' | 'cancelled',
+    public code: 'http' | 'network' | 'timeout' | 'too_large' | 'empty' | 'not_image' | 'permission' | 'cancelled' | 'rate_limited',
     message: string,
     public status?: number,
     /** 建议重试 */
     public retriable = false,
+    /** 服务端要求的等待毫秒数（Retry-After） */
+    public retryAfterMs?: number,
   ) {
     super(message);
   }
+}
+
+function parseRetryAfter(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 120_000);
+  const date = Date.parse(value);
+  if (!Number.isNaN(date)) return Math.min(Math.max(date - Date.now(), 0), 120_000);
+  return undefined;
 }
 
 export interface FetchOutcome {
@@ -47,7 +58,15 @@ export async function fetchAsset(url: string, signal: AbortSignal): Promise<Fetc
       signal: controller.signal,
     });
     if (!res.ok) {
-      throw new FetchError('http', `HTTP ${res.status}`, res.status, res.status === 429 || res.status >= 500);
+      const retryAfterMs = parseRetryAfter(res.headers.get('retry-after'));
+      if (res.status === 429) {
+        throw new FetchError('rate_limited', '请求过于频繁（429），已暂停队列', 429, true, retryAfterMs ?? 30_000);
+      }
+      if (res.status === 401 || res.status === 403) {
+        // 不盲目重试：提示回源页面重新加载并重新扫描
+        throw new FetchError('permission', `资源不可访问（HTTP ${res.status}），可能需要刷新页面后重新采集`, res.status, false);
+      }
+      throw new FetchError('http', `HTTP ${res.status}`, res.status, res.status >= 500, retryAfterMs);
     }
     const lengthHeader = Number(res.headers.get('content-length') ?? 0);
     if (lengthHeader > LIMITS.maxFileBytes) throw new FetchError('too_large', '文件超过单文件上限', undefined, false);
@@ -114,9 +133,7 @@ export async function fetchAsset(url: string, signal: AbortSignal): Promise<Fetc
   }
 }
 
-/** 根据 Retry-After 计算等待毫秒数。 */
-export function retryDelay(attempt: number, retryAfterHeader?: string | null): number {
-  const ra = Number(retryAfterHeader);
-  if (Number.isFinite(ra) && ra > 0) return Math.min(ra * 1000, 60_000);
+/** 第 attempt 次重试前的等待毫秒数（指数退避）。 */
+export function retryDelay(attempt: number): number {
   return Math.min(500 * 2 ** attempt, 8000);
 }
