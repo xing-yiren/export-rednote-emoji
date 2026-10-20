@@ -11,12 +11,18 @@
 - 仅采集**已渲染**的评论图片（需手动滚动/展开），不代表整帖或收藏库全部。
 - 平台返回 HTML/403 时（链接过期、需重新加载页面）会如实标记失败，不做猜测性重试。
 
+## 文档
+
+- 使用与安装：[docs/USAGE.md](./docs/USAGE.md)
+- P0 验证记录：[docs/VALIDATION.md](./docs/VALIDATION.md)
+
 ## 开发
 
 ```sh
 npm install
 npm test          # 单元测试
 npm run build     # 构建扩展到 dist/
+npm run typecheck # 类型检查
 npm run build:probe  # 构建 P0 探针到 dist-probe/
 ```
 
