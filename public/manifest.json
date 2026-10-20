@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "小红书表情包导出",
+  "short_name": "Rednote Emoji Export",
+  "version": "0.1.0",
+  "description": "采集小红书网页评论区已渲染的图片表情，预览、筛选后导出到本地。",
+  "minimum_chrome_version": "120",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": { "default_title": "采集本笔记评论区表情" },
+  "background": { "service_worker": "background.js", "type": "module" },
+  "permissions": ["activeTab", "scripting", "storage", "downloads"],
+  "host_permissions": ["https://sns-webpic-qc.xhscdn.com/*"],
+  "optional_host_permissions": ["https://*.xhscdn.com/*"],
+  "web_accessible_resources": []
+}

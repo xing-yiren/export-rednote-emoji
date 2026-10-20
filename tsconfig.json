@@ -14,8 +14,7 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "types": ["chrome", "node"],
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] }
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src", "tests", "vite.config.ts", "scripts"]
 }
