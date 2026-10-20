@@ -54,3 +54,10 @@ npm install && npm run build
 最小权限：`activeTab`、`scripting`、`storage`、`downloads`，以及对 `sns-webpic-qc.xhscdn.com` 的读取权限。不读取 Cookie、不上传数据、不申请 `<all_urls>`。
 
 完整说明见 [README](https://github.com/xing-yiren/export-rednote-emoji#readme)。
+
+### 校验值（SHA-256）
+
+```text
+3b6f4270bfaf6bb28dacfaed8b70333adbbf879c2ef8eb8f69e2cd1c036d03dd  RednoteEmoji-0.1.0.dmg
+27587bd21910d7ccb74128e85f5a29be474662cc74483ae87b7fb52f10b172ea  RednoteEmoji-0.1.0.zip
+```

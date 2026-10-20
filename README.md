@@ -65,7 +65,7 @@ rednote-emoji_<noteId>_<时间戳>/
 
 ### macOS（推荐）
 
-1. 下载 `RednoteEmoji-<版本>.dmg`（见 Releases；若从聊天工具获取不便，也可用同名的 `.zip` 传输后解压，内容相同）
+1. 从 [Releases](https://github.com/xing-yiren/export-rednote-emoji/releases) 下载最新的 `RednoteEmoji-<版本>.dmg`（同名 `.zip` 是同一安装器的传输备份，内容相同）
 2. 双击挂载，把「**安装小红书表情包导出**」拖进「应用程序」
 3. 双击运行。首次若提示"无法验证开发者"，请 **右键 → 打开**
 4. 安装程序会：
