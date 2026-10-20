@@ -178,7 +178,7 @@
     box.innerHTML = `<b>Rednote Emoji Probe</b><div>容器候选: ${r.containers.length} · 图片节点: ${r.media.filter(m => m.type === 'img').length} · fetch 成功: ${okCount}/${r.fetchResults.length}</div><div>格式: ${JSON.stringify(fmtCounts)}</div><div style="margin-top:6px;white-space:pre-wrap">${r.fetchResults.slice(0, 12).map(x => `${x.status ?? 'ERR'} ${x.format ?? ''}${x.animated === true ? ' (anim)' : ''} ${x.decodedSize ? x.decodedSize.join('x') : ''} ${x.byteLength ?? ''}B ${x.host}`).join('\n')}</div>`;
     const bar = document.createElement('div');
     bar.style.cssText = 'display:flex;gap:6px;margin-top:8px;flex-wrap:wrap';
-    const mk = (label, fn) => { const b = document.createElement('button'); b.textContent = label; b.style.cssText = 'padding:4px 8px;cursor:pointer'; b.onclick = fn; return b; };
+    const mk = (label, fn) => { const b = document.createElement('button'); b.textContent = label; b.style.cssText = 'padding:4px 8px;cursor:pointer;background:#333;color:#eee;border:1px solid #666;border-radius:4px'; b.onclick = fn; return b; };
     bar.append(
       mk('复制 JSON', () => navigator.clipboard.writeText(text)),
       mk('下载 JSON', () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = 'rednote-probe-' + Date.now() + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 10000); }),
