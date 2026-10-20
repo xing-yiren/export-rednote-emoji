@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Rednote Emoji Probe (P0)",
+  "version": "0.1.0",
+  "description": "P0 真实资源验证探针：仅用于读取页面 DOM 与图片字节",
+  "minimum_chrome_version": "120",
+  "permissions": ["activeTab", "scripting", "downloads"],
+  "optional_host_permissions": ["https://*/*"],
+  "background": { "service_worker": "sw.js" },
+  "action": { "default_title": "运行小红书表情探针" }
+}
