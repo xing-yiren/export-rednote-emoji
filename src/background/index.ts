@@ -106,6 +106,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({ ok: false, reason: 'stale' });
         return;
       }
+      // 页面已切换到其它笔记：不得把新笔记的图片混入旧会话
+      if (payload.pageNoteId && payload.pageNoteId !== active.noteId) {
+        sendResponse({ ok: false, reason: 'note_changed' });
+        return;
+      }
       await chrome.runtime.sendMessage({ type: 'SCAN_FORWARD', payload }).catch(() => {
         // 管理页未打开时丢弃（管理页打开后会重新发送 SCAN_NOW）
       });
@@ -123,10 +128,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return;
     }
     if (msg?.type === 'NOTE_CHANGED') {
-      const active = await getActive();
-      if (active) {
-        await setActive({ ...active, noteUrl: msg.to });
-      }
+      // 只记录页面已切换，不扩展会话范围；会话仍绑定原笔记
+      await chrome.storage.local.set({ lastNoteChange: { from: msg.from, to: msg.to, at: Date.now() } });
       sendResponse({ ok: true });
       return;
     }
@@ -151,8 +154,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({ ok: false, reason: 'tab_closed' });
         return;
       }
-      if (tab.url !== active.noteUrl && !isNoteUrl(tab.url ?? '')) {
+      const currentNoteId = parseNoteId(tab.url ?? '');
+      if (!currentNoteId) {
         sendResponse({ ok: false, reason: 'left_note', active });
+        return;
+      }
+      if (currentNoteId !== active.noteId) {
+        sendResponse({ ok: false, reason: 'note_changed', active });
         return;
       }
       try {

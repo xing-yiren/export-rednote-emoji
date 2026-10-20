@@ -72,6 +72,7 @@ function send(images: ScannedImage[], trigger: ScanPayload['trigger']): void {
     trigger,
     commentDomPresent: !!document.querySelector(SELECTORS.commentItem),
     skippedHosts: [...skippedHosts],
+    pageNoteId: noteId(),
   };
   try {
     chrome.runtime.sendMessage({ type: MSG.scanResult, payload }).catch(() => {});

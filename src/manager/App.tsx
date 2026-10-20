@@ -235,7 +235,12 @@ export function App() {
           <div className="notice warn small">小红书标签页已关闭，无法继续采集。已收集的图片仍可获取与导出。</div>
         )}
         {pageState === 'left_note' && (
-          <div className="notice warn small">小红书标签页已离开该笔记，无法继续采集。已收集的图片仍可获取与导出。</div>
+          <div className="notice warn small">小红书标签页已离开笔记详情页，无法继续采集。已收集的图片仍可获取与导出。</div>
+        )}
+        {pageState === 'note_changed' && (
+          <div className="notice warn small">
+            小红书标签页已切换到<b>另一篇笔记</b>，本会话不再采集新页面的图片（避免不同帖子混在一起）。已收集的图片仍可获取与导出；如需采集新笔记，请在新笔记页点击扩展图标。
+          </div>
         )}
         {!commentDomPresent && (
           <div className="notice warn small">

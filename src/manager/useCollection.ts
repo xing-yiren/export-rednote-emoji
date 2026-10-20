@@ -29,7 +29,7 @@ export interface CollectionState {
   /** 未获授权而跳过的图片域名 */
   skippedHosts: string[];
   /** 与小红书页面的连接状态 */
-  pageState: 'connected' | 'script_gone' | 'tab_closed' | 'left_note' | 'unknown';
+  pageState: 'connected' | 'script_gone' | 'tab_closed' | 'left_note' | 'note_changed' | 'unknown';
 }
 
 export function useCollection(): CollectionState & {
@@ -148,12 +148,11 @@ export function useCollection(): CollectionState & {
     return () => chrome.runtime.onMessage.removeListener(listener);
   }, [applyScan]);
 
-  // 管理页打开后主动触发一次扫描，补上管理页未打开期间的增量（每次会话仅一次）
-  const resynced = useRef<string | null>(null);
+  // 管理页每次挂载都向页面问候一次：既补上未打开期间的增量，也检测页面连接是否失效
+  // （页面刷新/关闭/离开笔记后的状态提示依赖此检测）
   useEffect(() => {
     const id = state.session?.id;
-    if (!state.ready || !id || resynced.current === id) return;
-    resynced.current = id;
+    if (!state.ready || !id) return;
     void chrome.runtime
       .sendMessage({ type: MSG.scanNow })
       .then((res: { ok: boolean; reason?: string } | undefined) => {
@@ -161,6 +160,7 @@ export function useCollection(): CollectionState & {
           script_gone: 'script_gone',
           tab_closed: 'tab_closed',
           left_note: 'left_note',
+          note_changed: 'note_changed',
         };
         setState((s) => ({ ...s, pageState: res?.ok ? 'connected' : (map[res?.reason ?? ''] ?? 'unknown') }));
       })

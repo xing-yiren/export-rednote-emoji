@@ -73,6 +73,8 @@ export interface ScanPayload {
   sessionId: string;
   noteId: string;
   noteUrl: string;
+  /** 上报时页面所在笔记 ID（SPA 切换后可能与会话不同） */
+  pageNoteId?: string;
   images: ScannedImage[];
   trigger: 'initial' | 'mutation' | 'snapshot';
   /** 页面当前是否仍持有评论区 DOM（详情弹层可能已被卸载） */
