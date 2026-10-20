@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCollection } from './useCollection';
 import { useJobs } from './useJobs';
 import { db } from '../services/db';
@@ -16,7 +16,7 @@ const STATUS_LABEL: Record<Candidate['status'], string> = {
 };
 
 export function App() {
-  const { ready, session, active, candidates, overflow, reload } = useCollection();
+  const { ready, session, active, candidates, overflow, reload, commentDomPresent } = useCollection();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [authorFilter, setAuthorFilter] = useState<string>('');
   const [onlySelectedAuthor, setOnlySelectedAuthor] = useState(false);
@@ -30,11 +30,21 @@ export function App() {
   };
   const { job, run, cancel } = useJobs(onUpdated);
 
-  // 首次加载后把已选状态同步为默认全选
+  // 默认全选：新会话时全选，后续新到达的图片也默认选中（用户手动取消的不受影响）
+  const touchedRef = useRef(false);
   useEffect(() => {
     setSelectedIds(new Set(candidates.map((c) => c.id)));
+    touchedRef.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id]);
+  useEffect(() => {
+    if (touchedRef.current) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const c of candidates) next.add(c.id);
+      return next;
+    });
+  }, [candidates]);
 
   const authors = useMemo(() => {
     const map = new Map<string, string>();
@@ -60,15 +70,18 @@ export function App() {
   const readyCount = candidates.filter((c) => c.status === 'ready').length;
   const failedCount = candidates.filter((c) => c.status === 'failed').length;
 
-  const toggle = (id: string) =>
+  const toggle = (id: string) => {
+    touchedRef.current = true;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+  };
 
   const selectAll = () => {
+    touchedRef.current = true;
     if (visible.every((c) => selectedIds.has(c.id))) {
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -168,6 +181,11 @@ export function App() {
             采集会话已停止或原标签页已关闭。已收集的图片仍可导出；如需继续采集，请回到小红书页面重新点击扩展图标。
           </div>
         )}
+        {!commentDomPresent && (
+          <div className="notice warn small">
+            小红书页面的评论区已卸载（切换到本页后详情弹层会关闭）。已收集的图片不受影响，可继续获取与导出；需要继续采集时，回到小红书标签页重新展开评论。
+          </div>
+        )}
         {overflow && (
           <div className="notice warn small">已达到每会话 {LIMITS.maxCandidatesPerSession} 个候选上限，后续图片未收集。请分批次采集或导出后开始新会话。</div>
         )}
@@ -236,6 +254,7 @@ function Card({
   busy: boolean;
 }) {
   const [preview, setPreview] = useState<{ url: string; format: string; animated: boolean | null; size: string } | null>(null);
+  const [previewError, setPreviewError] = useState(false);
   useEffect(() => {
     let revoked: string | null = null;
     let cancelled = false;
@@ -250,6 +269,10 @@ function Card({
           size: `${a.width ?? '?'}×${a.height ?? '?'}`,
         });
       });
+    } else {
+      // 尚未获取字节时，用已登记的候选资源地址做预览（已校验 https + 允许域名）
+      setPreview({ url: candidate.selectedUrl, format: '', animated: null, size: '' });
+      setPreviewError(false);
     }
     return () => {
       cancelled = true;
@@ -263,15 +286,22 @@ function Card({
     <div className={`card${selected ? ' selected' : ''}`} onClick={onToggle} role="checkbox" aria-checked={selected} tabIndex={0}
       onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onToggle(); } }}>
       <div className="thumb">
-        {preview ? <img src={preview.url} alt="" /> : <span className="muted small">未获取</span>}
+          {preview && !previewError ? (
+          <img src={preview.url} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setPreviewError(true)} />
+        ) : (
+          <span className="muted small">{candidate.status === 'ready' ? '预览失败' : '点击获取以查看'}</span>
+        )}
       </div>
-      <span className="badge">{preview ? `${preview.format}${preview.animated === true ? ' 动图' : preview.animated === null ? ' 动态未知' : ' 静态'}` : STATUS_LABEL[candidate.status]}</span>
+      <span className="badge">{preview?.format ? `${preview.format}${preview.animated === true ? ' 动图' : preview.animated === null ? ' 动态未知' : ' 静态'}` : STATUS_LABEL[candidate.status]}</span>
       {candidate.status === 'ready' && (
         <button className="todl" disabled={busy} onClick={(e) => { e.stopPropagation(); onSave(); }}>保存</button>
       )}
       <div className="meta">
         <span title={author}>{author}{extraSources > 0 ? ` +${extraSources}` : ''}</span>
-        <span className="muted">{preview ? preview.size : ''} <span className={`status ${candidate.status}`}>{STATUS_LABEL[candidate.status]}</span></span>
+        <span className="muted">
+          {preview?.size || (candidate.naturalSize ? `${candidate.naturalSize[0]}×${candidate.naturalSize[1]}` : '')}{' '}
+          <span className={`status ${candidate.status}`}>{STATUS_LABEL[candidate.status]}</span>
+        </span>
         {candidate.status === 'failed' && <span className="error" title={candidate.errorCode}>{candidate.errorCode?.slice(0, 40)}</span>}
       </div>
     </div>

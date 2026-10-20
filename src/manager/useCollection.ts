@@ -24,11 +24,13 @@ export interface CollectionState {
   candidates: Candidate[];
   overflow: boolean;
   lastScanAt: string | null;
+  /** 页面评论区 DOM 是否仍在（用户切到本页后详情弹层可能已卸载） */
+  commentDomPresent: boolean;
 }
 
 export function useCollection(): CollectionState & { reload: () => Promise<void> } {
   const [state, setState] = useState<CollectionState>({
-    ready: false, session: null, active: null, candidates: [], overflow: false, lastScanAt: null,
+    ready: false, session: null, active: null, candidates: [], overflow: false, lastScanAt: null, commentDomPresent: true,
   });
   const queue = useRef<Promise<void>>(Promise.resolve());
   const sessionRef = useRef<Session | null>(null);
@@ -92,6 +94,7 @@ export function useCollection(): CollectionState & { reload: () => Promise<void>
             sources: img.sources,
             resourceUrls: [img.url, ...(img.alternates ?? [])],
             selectedUrl: img.url,
+            naturalSize: img.naturalSize,
             discoveredAt: now,
             status: 'found',
             selected: true,
@@ -111,7 +114,13 @@ export function useCollection(): CollectionState & { reload: () => Promise<void>
           const byId = new Map(s.candidates.map((c) => [c.id, c]));
           for (const c of updated) byId.set(c.id, c);
           for (const c of newCandidates) byId.set(c.id, c);
-          return { ...s, candidates: [...byId.values()], overflow: s.overflow || overflow, lastScanAt: now };
+          return {
+            ...s,
+            candidates: [...byId.values()],
+            overflow: s.overflow || overflow,
+            lastScanAt: now,
+            commentDomPresent: payload.commentDomPresent ?? s.commentDomPresent,
+          };
         });
       })
       .catch((e) => console.error('applyScan failed', e));

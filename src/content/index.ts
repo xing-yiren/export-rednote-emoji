@@ -1,6 +1,10 @@
 /**
  * 按需注入的 content script：扫描当前笔记评论区图片，增量观察新加载节点。
  * 只在 isolated world 读取 DOM，不修改页面业务逻辑。
+ *
+ * 重要：管理页被打开时本标签页转入后台，小红书的详情弹层与评论 DOM 会被卸载。
+ * 因此这里始终维护“已收集图片”的最后快照，并在容器被移除后仍能重新上报，
+ * 保证用户在管理页关闭详情后也能继续操作已收集结果。
  */
 import { extractCommentImages, findCommentRoot, SELECTORS } from './adapter';
 import { MSG, type ContentMessage, type ScanPayload, type ScannedImage } from '../shared/types';
@@ -14,8 +18,8 @@ interface ScanState {
   observer: MutationObserver | null;
   root: Element | null;
   flushTimer: number | null;
-  pending: Map<string, ScannedImage>;
-  stopped: boolean;
+  /** 会话内已见过的图片快照（URL 去重），容器卸载后仍然可用 */
+  snapshot: Map<string, ScannedImage>;
 }
 
 const state: ScanState = {
@@ -24,15 +28,13 @@ const state: ScanState = {
   observer: null,
   root: null,
   flushTimer: null,
-  pending: new Map(),
-  stopped: true,
+  snapshot: new Map(),
 };
-
-let lastReportedNoteUrl = location.href;
 
 function isAllowed(u: string): boolean {
   try {
-    return isAllowedHost(new URL(u).hostname, ALLOWED_HOSTS) && new URL(u).protocol === 'https:';
+    const parsed = new URL(u);
+    return parsed.protocol === 'https:' && isAllowedHost(parsed.hostname, ALLOWED_HOSTS);
   } catch {
     return false;
   }
@@ -48,54 +50,53 @@ function noteId(): string {
   return /(?:explore|discovery\/item)\/([0-9a-f]{24})/.exec(location.href)?.[1] ?? '';
 }
 
-function flush(trigger: 'initial' | 'mutation'): void {
-  if (state.stopped) return;
-  const images: ScannedImage[] = [];
-  if (state.root) {
-    const items = state.root.querySelectorAll(SELECTORS.commentItem);
-    for (const item of items) images.push(...extractCommentImages(item, isAllowed));
+function collectInto(map: Map<string, ScannedImage>, container: ParentNode): void {
+  for (const item of container.querySelectorAll(SELECTORS.commentItem)) {
+    for (const img of extractCommentImages(item, isAllowed)) {
+      if (!map.has(img.url)) map.set(img.url, img);
+    }
   }
-  for (const img of state.pending.values()) images.push(img);
-  state.pending.clear();
-  if (images.length === 0) return;
+}
+
+function send(images: ScannedImage[], trigger: ScanPayload['trigger']): void {
+  if (!state.sessionId || images.length === 0) return;
   const payload: ScanPayload = {
     sessionId: state.sessionId,
     noteId: state.noteId,
     noteUrl: noteUrl(),
     images,
     trigger,
+    commentDomPresent: !!document.querySelector(SELECTORS.commentItem),
   };
   try {
     chrome.runtime.sendMessage({ type: MSG.scanResult, payload }).catch(() => {});
   } catch {
-    // 扩展被重载/卸载后 runtime 失效，停止观察
+    // 扩展重载/卸载后 runtime 失效：停止观察，等待用户重新启动
     stop();
   }
 }
 
-function scheduleFlush(): void {
-  if (state.flushTimer !== null || state.stopped) return;
-  state.flushTimer = window.setTimeout(() => {
-    state.flushTimer = null;
-    flush('mutation');
-  }, 300);
+/** 把当前 DOM 中可见的评论图片并入快照，并上报新增部分。 */
+function scanAndReport(trigger: 'initial' | 'mutation'): void {
+  const before = new Set(state.snapshot.keys());
+  const root = state.root && state.root.isConnected ? state.root : findCommentRoot(document);
+  state.root = root ?? state.root;
+  if (root) collectInto(state.snapshot, root);
+  const added = [...state.snapshot.values()].filter((img) => !before.has(img.url));
+  send(added, trigger);
 }
 
-function collectNearby(node: Node): void {
-  const el = node instanceof Element ? node : node.parentElement;
-  if (!el) return;
-  const scope = el.closest(SELECTORS.commentItem);
-  const contexts = scope ? [scope] : [...el.querySelectorAll(SELECTORS.commentItem)];
-  for (const item of contexts) {
-    for (const img of extractCommentImages(item, isAllowed)) {
-      state.pending.set(img.url, img);
-    }
-  }
-  // 新增节点本身可能就是一个图片
-  if (el instanceof HTMLImageElement && el.classList.contains('inner')) {
-    const item = el.closest(SELECTORS.commentItem);
-    if (item) for (const img of extractCommentImages(item, isAllowed)) state.pending.set(img.url, img);
-  }
+/** 重新上报整个快照（用于 NOTE_CHANGED 之外的恢复场景）。 */
+function reportSnapshot(): void {
+  send([...state.snapshot.values()], 'snapshot');
+}
+
+function scheduleScan(): void {
+  if (state.flushTimer !== null || !state.sessionId) return;
+  state.flushTimer = window.setTimeout(() => {
+    state.flushTimer = null;
+    scanAndReport('mutation');
+  }, 300);
 }
 
 function bindObserver(): void {
@@ -104,37 +105,34 @@ function bindObserver(): void {
   if (state.observer && state.root === root) return;
   state.observer?.disconnect();
   state.root = root;
-  const observer = new MutationObserver((records) => {
-    if (state.stopped) return;
-    // 评论容器被替换：重新绑定
+  const observer = new MutationObserver(() => {
+    if (!state.sessionId) return;
     if (!state.root || !state.root.isConnected) {
-      state.root = null;
-      bindObserver();
-      if (state.root) flush('mutation');
+      // 评论容器被替换或卸载（例如详情弹层关闭）：保留快照，重新绑定
+      state.root = findCommentRoot(document);
+      if (state.root) bindObserver();
     }
-    for (const r of records) {
-      if (r.type === 'attributes') collectNearby(r.target);
-      else for (const n of r.addedNodes) if (n.isConnected) collectNearby(n);
-    }
-    scheduleFlush();
+    scheduleScan();
   });
   observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'data-src'] });
   state.observer = observer;
 }
 
 function start(sessionId: string, expectedNoteId: string): void {
-  if (state.sessionId === sessionId && !state.stopped) return;
+  if (state.sessionId === sessionId) {
+    bindObserver();
+    scanAndReport('mutation');
+    return;
+  }
   stop();
   state.sessionId = sessionId;
   state.noteId = expectedNoteId || noteId();
-  state.stopped = false;
-  state.pending.clear();
+  state.snapshot.clear();
   bindObserver();
-  flush('initial');
+  scanAndReport('initial');
 }
 
 function stop(): void {
-  state.stopped = true;
   state.observer?.disconnect();
   state.observer = null;
   state.root = null;
@@ -142,20 +140,22 @@ function stop(): void {
     clearTimeout(state.flushTimer);
     state.flushTimer = null;
   }
-  state.pending.clear();
   state.sessionId = '';
+  state.snapshot.clear();
 }
 
 chrome.runtime.onMessage.addListener((msg: ContentMessage, _sender, sendResponse) => {
   if (msg?.type === MSG.beginScan) {
     start(msg.sessionId, msg.noteId);
-    sendResponse({ ok: true });
+    sendResponse({ ok: true, count: state.snapshot.size });
     return true;
   }
   if (msg?.type === MSG.scanNow) {
     bindObserver();
-    flush('mutation');
-    sendResponse({ ok: true });
+    scanAndReport('mutation');
+    // 容器已卸载（用户切到管理页）时，至少把快照重新上报，管理页据此覆盖竞态丢失
+    reportSnapshot();
+    sendResponse({ ok: true, count: state.snapshot.size });
     return true;
   }
   if (msg?.type === MSG.endScan) {
@@ -167,6 +167,7 @@ chrome.runtime.onMessage.addListener((msg: ContentMessage, _sender, sendResponse
 });
 
 // SPA 路由切换：笔记变化时停止旧会话观察，等待用户重新开启
+let lastReportedUrl = location.href;
 window.addEventListener('popstate', onUrlMaybeChanged);
 const originalPush = history.pushState;
 history.pushState = function (...args) {
@@ -175,10 +176,10 @@ history.pushState = function (...args) {
 };
 
 function onUrlMaybeChanged(): void {
-  if (location.href === lastReportedNoteUrl) return;
-  const prev = lastReportedNoteUrl;
-  lastReportedNoteUrl = location.href;
-  if (noteId() !== state.noteId && !state.stopped) {
+  if (location.href === lastReportedUrl) return;
+  const prev = lastReportedUrl;
+  lastReportedUrl = location.href;
+  if (state.sessionId && noteId() !== state.noteId) {
     stop();
     try {
       chrome.runtime.sendMessage({ type: 'NOTE_CHANGED', from: prev, to: location.href }).catch(() => {});

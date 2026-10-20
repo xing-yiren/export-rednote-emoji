@@ -54,4 +54,12 @@ export const COMMENT_PAGE_HTML = `
       </div>
     </div>
   </div>
+</div>
+<div id="outer-feed">
+  <div class="comment-item" id="comment-outside">
+    <div class="comment-inner-container">
+      <div class="avatar"><img class="avatar-item" data-user-id="outside-id" src="https://sns-avatar-qc.xhscdn.com/avatar/o.jpg"></div>
+      <div class="right"><div class="comment-picture"><div class="img-box"><img class="inner" src="https://sns-webpic-qc.xhscdn.com/202601010000/hashZ/comment/outside!nc_n_webp_mw_1"></div></div></div>
+    </div>
+  </div>
 </div>`;

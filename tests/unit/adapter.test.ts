@@ -12,7 +12,7 @@ beforeEach(() => {
 describe('评论适配器', () => {
   it('定位评论容器', () => {
     const root = findCommentRoot(document);
-    expect(root?.id).toBe('comment-root');
+    expect(root?.classList.contains('note-scroller')).toBe(true);
   });
 
   it('只采集评论区图片，排除头像与笔记主图', () => {
@@ -54,6 +54,11 @@ describe('评论适配器', () => {
     const item = document.getElementById('comment-cmtA')!;
     item.querySelector('img.avatar-item')!.removeAttribute('data-user-id');
     expect(resolveAuthor(item).authorId).toBe('alice');
+  });
+
+  it('笔记详情之外的 comment-item（如推荐流）不被采集', () => {
+    const imgs = scanDocument(document, isAllowed);
+    expect(imgs.some((i) => i.url.includes('outside!'))).toBe(false);
   });
 
   it('无评论时返回空数组', () => {

@@ -19,11 +19,12 @@ export interface Candidate {
   sources: CandidateSource[];
   resourceUrls: string[];
   selectedUrl: string;
+  /** 页面原图尺寸，仅用于展示排序 */
+  naturalSize?: [number, number];
   discoveredAt: string;
   status: CandidateStatus;
   assetHash?: string;
   errorCode?: string;
-  /** 去重 marker：同一 URL 的多个候选合并时记录 */
   selected: boolean;
 }
 
@@ -64,6 +65,8 @@ export interface ScannedImage {
   sources: ScanSource[];
   /** 同一元素上的其它候选地址（srcset/data-src），仅供调试与降级 */
   alternates?: string[];
+  /** 原图展示尺寸（仅用于排序/展示，不作为识别依据） */
+  naturalSize?: [number, number];
 }
 
 export interface ScanPayload {
@@ -71,7 +74,9 @@ export interface ScanPayload {
   noteId: string;
   noteUrl: string;
   images: ScannedImage[];
-  trigger: 'initial' | 'mutation';
+  trigger: 'initial' | 'mutation' | 'snapshot';
+  /** 页面当前是否仍持有评论区 DOM（详情弹层可能已被卸载） */
+  commentDomPresent?: boolean;
 }
 
 export type ExtensionMessage =
