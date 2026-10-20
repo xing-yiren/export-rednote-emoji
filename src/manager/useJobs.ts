@@ -21,7 +21,10 @@ type Listener = (updates: Candidate[]) => void;
 
 /** 调试用：?slow=毫秒 让每张图片之间等待，便于手动测试取消与多管理页租约。 */
 function debugSlowMs(): number {
-  const v = Number(new URLSearchParams(location.search).get('slow'));
+  // 兼容三种写法：?slow=1000、#<sessionId>?slow=1000、#<sessionId>&slow=1000
+  const fromHash = new URLSearchParams(location.hash.replace(/^#/, '').split('?')[1] ?? '');
+  const fromSearch = new URLSearchParams(location.search);
+  const v = Number(fromSearch.get('slow') ?? fromHash.get('slow'));
   return Number.isFinite(v) && v > 0 ? Math.min(v, 5000) : 0;
 }
 
@@ -66,7 +69,7 @@ export function useJobs(onUpdated: Listener, lease: ManagerLease | null = null) 
   }, []);
 
   useEffect(() => {
-    void recover(location.hash.slice(1));
+    void recover(location.hash.slice(1).split('?')[0] ?? '');
   }, [recover]);
 
   const run = useCallback(async (targets: Candidate[]): Promise<boolean> => {

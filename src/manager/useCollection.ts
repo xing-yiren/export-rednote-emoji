@@ -42,7 +42,8 @@ export function useCollection(): CollectionState & {
   const indexRef = useRef<Map<string, { id: string; sources: CandidateSource[] }>>(new Map());
 
   const load = useCallback(async () => {
-    const hash = location.hash.replace(/^#/, '');
+    // hash 形式为 #<sessionId> 或 #<sessionId>?slow=1000
+    const hash = location.hash.replace(/^#/, '').split('?')[0] ?? '';
     const res = (await chrome.runtime.sendMessage({ type: 'GET_ACTIVE_SESSION' }).catch(() => undefined)) as
       | { ok: boolean; active: ActiveSession | null }
       | undefined;
