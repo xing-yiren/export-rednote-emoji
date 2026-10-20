@@ -47,10 +47,14 @@ select, input { font: inherit; padding: 5px 8px; border-radius: 6px; border: 1px
 .card.selected { border-color: var(--accent); }
 .card .thumb { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: repeating-conic-gradient(#0001 0 25%, transparent 0 50%) 0 0 / 16px 16px; overflow: hidden; }
 .card .thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.card .meta { padding: 6px 8px; font-size: 12px; display: flex; flex-direction: column; gap: 2px; }
+.card .meta { padding: 6px 8px; font-size: 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.card .meta > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+header.bar > * { min-width: 0; }
+header.bar .note-link { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+select { max-width: 160px; }
 .card .badge { position: absolute; top: 6px; left: 6px; font-size: 11px; padding: 1px 6px; border-radius: 999px; background: #000a; color: #fff; }
 .card .todl { position: absolute; top: 4px; right: 4px; padding: 2px 6px; font-size: 11px; }
-.status { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 11px; border: 1px solid var(--line); }
+.status { white-space: nowrap; display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 11px; border: 1px solid var(--line); }
 .status.ready { color: var(--ok); border-color: var(--ok); }
 .status.failed { color: var(--err); border-color: var(--err); }
 .status.fetching, .status.queued { color: var(--warn); border-color: var(--warn); }

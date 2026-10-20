@@ -82,17 +82,43 @@ function normalizeUrl(raw: string, base: string): string | null {
   }
 }
 
+export interface ExtractDiagnostics {
+  /** 被排除的图片域名（用于提示站点 CDN 变更或需额外授权） */
+  skippedHosts: Set<string>;
+  /** 评论图片节点总数 */
+  pictureNodes: number;
+}
+
 /** 从评论项提取正文图片；限定在 .comment-picture 作用域内，绝不返回头像。 */
-export function extractCommentImages(item: Element, isAllowed: AllowedUrl, base = location.href): ScannedImage[] {
+export function extractCommentImages(
+  item: Element,
+  isAllowed: AllowedUrl,
+  base = location.href,
+  diagnostics?: ExtractDiagnostics,
+): ScannedImage[] {
   const out: ScannedImage[] = [];
   const source: ScanSource = { commentId: resolveCommentId(item), ...resolveAuthor(item) };
   for (const pic of item.querySelectorAll(SEL.commentPicture)) {
     const img = pic.querySelector(SEL.pictureImg) as HTMLImageElement | null;
     if (!img) continue;
-    const candidates = [img.currentSrc, img.getAttribute('src') ?? '', img.getAttribute('data-src') ?? '']
+    if (diagnostics) diagnostics.pictureNodes++;
+    const normalized = [img.currentSrc, img.getAttribute('src') ?? '', img.getAttribute('data-src') ?? '']
       .map((s) => normalizeUrl(s, base))
-      .filter((s): s is string => !!s && isAllowed(s));
-    if (candidates.length === 0) continue;
+      .filter((s): s is string => !!s);
+    const candidates = normalized.filter((s) => isAllowed(s));
+    if (candidates.length === 0) {
+      if (diagnostics) {
+        for (const raw of [img.currentSrc, img.getAttribute('src') ?? '']) {
+          try {
+            const h = new URL(raw, base).hostname;
+            if (h) diagnostics.skippedHosts.add(h);
+          } catch {
+            /* 忽略无法解析的地址 */
+          }
+        }
+      }
+      continue;
+    }
     const [nw, nh] = [img.naturalWidth, img.naturalHeight];
     out.push({
       url: candidates[0]!,

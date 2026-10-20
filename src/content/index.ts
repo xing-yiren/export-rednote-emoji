@@ -50,9 +50,13 @@ function noteId(): string {
   return /(?:explore|discovery\/item)\/([0-9a-f]{24})/.exec(location.href)?.[1] ?? '';
 }
 
+/** 会话内被跳过的图片域名（诊断用） */
+const skippedHosts = new Set<string>();
+
 function collectInto(map: Map<string, ScannedImage>, container: ParentNode): void {
+  const diag = { skippedHosts, pictureNodes: 0 };
   for (const item of container.querySelectorAll(SELECTORS.commentItem)) {
-    for (const img of extractCommentImages(item, isAllowed)) {
+    for (const img of extractCommentImages(item, isAllowed, location.href, diag)) {
       if (!map.has(img.url)) map.set(img.url, img);
     }
   }
@@ -67,6 +71,7 @@ function send(images: ScannedImage[], trigger: ScanPayload['trigger']): void {
     images,
     trigger,
     commentDomPresent: !!document.querySelector(SELECTORS.commentItem),
+    skippedHosts: [...skippedHosts],
   };
   try {
     chrome.runtime.sendMessage({ type: MSG.scanResult, payload }).catch(() => {});
@@ -128,6 +133,7 @@ function start(sessionId: string, expectedNoteId: string): void {
   state.sessionId = sessionId;
   state.noteId = expectedNoteId || noteId();
   state.snapshot.clear();
+  skippedHosts.clear();
   bindObserver();
   scanAndReport('initial');
 }

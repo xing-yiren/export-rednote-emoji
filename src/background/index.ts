@@ -141,11 +141,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
     if (msg?.type === 'SCAN_NOW') {
       const active = await getActive();
-      if (active) {
-        await chrome.tabs.sendMessage(active.tabId, { type: MSG.scanNow }).catch(() => {});
+      if (!active) {
+        sendResponse({ ok: false, reason: 'no_session' });
+        return;
+      }
+      const tab = await chrome.tabs.get(active.tabId).catch(() => null);
+      if (!tab) {
+        await setActive(null);
+        sendResponse({ ok: false, reason: 'tab_closed' });
+        return;
+      }
+      if (tab.url !== active.noteUrl && !isNoteUrl(tab.url ?? '')) {
+        sendResponse({ ok: false, reason: 'left_note', active });
+        return;
+      }
+      try {
+        await chrome.tabs.sendMessage(active.tabId, { type: MSG.scanNow });
         sendResponse({ ok: true, active });
-      } else {
-        sendResponse({ ok: false });
+      } catch {
+        // 页面刷新后内容脚本已不存在：明确告知需要重新点击扩展图标
+        sendResponse({ ok: false, reason: 'script_gone', active });
       }
       return;
     }

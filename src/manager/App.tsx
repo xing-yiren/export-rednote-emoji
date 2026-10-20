@@ -17,7 +17,7 @@ const STATUS_LABEL: Record<Candidate['status'], string> = {
 };
 
 export function App() {
-  const { ready, session, active, candidates, overflow, commentDomPresent, applyUpdates } = useCollection();
+  const { ready, session, active, candidates, overflow, commentDomPresent, skippedHosts, pageState, applyUpdates } = useCollection();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [authorFilter, setAuthorFilter] = useState<string>('');
   const [onlySelectedAuthor, setOnlySelectedAuthor] = useState(false);
@@ -25,6 +25,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [stopped, setStopped] = useState(false);
 
   const onUpdated = useCallback((updates: Candidate[]) => {
     applyUpdates(updates);
@@ -111,6 +112,17 @@ export function App() {
     }
   };
 
+  const stopCollection = async () => {
+    await chrome.runtime.sendMessage({ type: 'STOP_COLLECTION' });
+    setStopped(true);
+    setNotice('已停止采集。已收集的图片仍可获取与导出。');
+  };
+
+  const resumeCollection = async () => {
+    // 重新点击扩展图标等同于在页面上重新启动采集；这里提示用户操作
+    setNotice('请回到小红书笔记页，重新点击工具栏中的扩展图标以开始新的采集会话。');
+  };
+
   const fetchSelected = async () => {
     setError(null);
     const targets = selected.filter((c) => c.status !== 'ready');
@@ -184,6 +196,11 @@ export function App() {
         <span className="muted small" title={session.noteUrl}>笔记 {session.noteId}</span>
         <a href={session.noteUrl} target="_blank" rel="noreferrer" className="small">来源页</a>
         <span className="small">已收集 <b>{candidates.length}</b> / {LIMITS.maxCandidatesPerSession}</span>
+        {stale || stopped ? (
+          <button className="small" onClick={() => void resumeCollection()}>重新开始采集</button>
+        ) : (
+          <button className="small" onClick={() => void stopCollection()}>停止采集</button>
+        )}
         <span className="small">就绪 <b>{readyCount}</b> · 失败 <b className={failedCount ? 'error' : ''}>{failedCount}</b></span>
         <label className="small">
           作者：<select value={authorFilter} onChange={(e) => setAuthorFilter(e.target.value)}>
@@ -209,9 +226,25 @@ export function App() {
             采集会话已停止或原标签页已关闭。已收集的图片仍可导出；如需继续采集，请回到小红书页面重新点击扩展图标。
           </div>
         )}
+        {pageState === 'script_gone' && (
+          <div className="notice warn small">
+            小红书页面已刷新或重新加载，采集连接中断。已收集的图片不受影响；<b>请回到小红书标签页重新点击扩展图标</b>以开始新的采集会话。
+          </div>
+        )}
+        {pageState === 'tab_closed' && (
+          <div className="notice warn small">小红书标签页已关闭，无法继续采集。已收集的图片仍可获取与导出。</div>
+        )}
+        {pageState === 'left_note' && (
+          <div className="notice warn small">小红书标签页已离开该笔记，无法继续采集。已收集的图片仍可获取与导出。</div>
+        )}
         {!commentDomPresent && (
           <div className="notice warn small">
             小红书页面的评论区已卸载（切换到本页后详情弹层会关闭）。已收集的图片不受影响，可继续获取与导出；需要继续采集时，回到小红书标签页重新展开评论。
+          </div>
+        )}
+        {skippedHosts.length > 0 && (
+          <div className="notice warn small">
+            以下图片域名未被授权，已跳过：{skippedHosts.join('、')}。如果评论区明明有图片却采集不到，说明站点更换了资源域名，需要更新扩展的允许列表。
           </div>
         )}
         {overflow && (

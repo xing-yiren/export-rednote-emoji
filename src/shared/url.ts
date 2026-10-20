@@ -1,7 +1,7 @@
 /** URL 校验与处理：只接受经过登记的资源域名。 */
 
-/** P0 实测得到的评论图片 CDN；其他域名需要用户另外授权。 */
-export const KNOWN_IMAGE_HOSTS = ['sns-webpic-qc.xhscdn.com', 'sns-avatar-qc.xhscdn.com'];
+/** P0 实测得到的评论图片 CDN；其他域名需要用户另外授权（见 manifest host_permissions）。 */
+export const KNOWN_IMAGE_HOSTS = ['sns-webpic-qc.xhscdn.com'];
 
 export const NOTE_URL_RE = /^https:\/\/(www\.)?xiaohongshu\.com\/(explore|discovery\/item)\/([0-9a-f]{24})/;
 

@@ -26,6 +26,10 @@ export interface CollectionState {
   lastScanAt: string | null;
   /** 页面评论区 DOM 是否仍在（用户切到本页后详情弹层可能已卸载） */
   commentDomPresent: boolean;
+  /** 未获授权而跳过的图片域名 */
+  skippedHosts: string[];
+  /** 与小红书页面的连接状态 */
+  pageState: 'connected' | 'script_gone' | 'tab_closed' | 'left_note' | 'unknown';
 }
 
 export function useCollection(): CollectionState & {
@@ -34,7 +38,7 @@ export function useCollection(): CollectionState & {
   applyUpdates: (updates: Candidate[]) => void;
 } {
   const [state, setState] = useState<CollectionState>({
-    ready: false, session: null, active: null, candidates: [], overflow: false, lastScanAt: null, commentDomPresent: true,
+    ready: false, session: null, active: null, candidates: [], overflow: false, lastScanAt: null, commentDomPresent: true, skippedHosts: [], pageState: 'unknown',
   });
   const queue = useRef<Promise<void>>(Promise.resolve());
   const sessionRef = useRef<Session | null>(null);
@@ -125,6 +129,7 @@ export function useCollection(): CollectionState & {
             overflow: s.overflow || overflow,
             lastScanAt: now,
             commentDomPresent: payload.commentDomPresent ?? s.commentDomPresent,
+            skippedHosts: payload.skippedHosts?.length ? payload.skippedHosts : s.skippedHosts,
           };
         });
       })
@@ -149,7 +154,17 @@ export function useCollection(): CollectionState & {
     const id = state.session?.id;
     if (!state.ready || !id || resynced.current === id) return;
     resynced.current = id;
-    void chrome.runtime.sendMessage({ type: MSG.scanNow }).catch(() => {});
+    void chrome.runtime
+      .sendMessage({ type: MSG.scanNow })
+      .then((res: { ok: boolean; reason?: string } | undefined) => {
+        const map: Record<string, CollectionState['pageState']> = {
+          script_gone: 'script_gone',
+          tab_closed: 'tab_closed',
+          left_note: 'left_note',
+        };
+        setState((s) => ({ ...s, pageState: res?.ok ? 'connected' : (map[res?.reason ?? ''] ?? 'unknown') }));
+      })
+      .catch(() => setState((s) => ({ ...s, pageState: 'unknown' })));
   }, [state.ready, state.session?.id]);
 
   const applyUpdates = useCallback((updates: Candidate[]) => {

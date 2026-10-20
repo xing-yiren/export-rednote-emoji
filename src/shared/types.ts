@@ -77,6 +77,8 @@ export interface ScanPayload {
   trigger: 'initial' | 'mutation' | 'snapshot';
   /** 页面当前是否仍持有评论区 DOM（详情弹层可能已被卸载） */
   commentDomPresent?: boolean;
+  /** 因域名未获授权而被跳过的图片 host（用于提示站点 CDN 变更） */
+  skippedHosts?: string[];
 }
 
 export type ExtensionMessage =
