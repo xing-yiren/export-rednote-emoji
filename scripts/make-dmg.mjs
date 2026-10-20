@@ -83,6 +83,6 @@ try {
   execFileSync('hdiutil', ['create', '-volname', 'RednoteEmoji', '-srcfolder', staging, '-ov', '-format', 'UDZO', dmgPath], { stdio: 'inherit' });
 }
 
-// 同时保留 ZIP 形式（方便通过聊天/网盘传输，未签名的 app 在下载后仍可右键打开）
+// 同时保留 ZIP 形式（方便传输；未签名的 app 下载后需右键打开）
 execFileSync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, resolve(root, `release/RednoteEmoji-${version}.zip`)], { stdio: 'inherit' });
-console.log(`DMG + ZIP -> release/RednoteEmoji-${version}.{dmg,zip}`);
+console.log(`release/RednoteEmoji-${version}.dmg（安装包）\nrelease/RednoteEmoji-${version}.zip（安装器传输备份）`);

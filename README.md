@@ -1,23 +1,22 @@
 # 小红书表情包导出（Chrome / Edge 扩展）
 
 > 把小红书评论里已经渲染出来的表情图片，预览、筛选后批量导出到本地。
-> 不读取账号凭据，不自动发评论，不做全站抓取。
 
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-4285F4)](https://developer.chrome.com/docs/extensions/develop/migrate)
 [![Chrome](https://img.shields.io/badge/Chrome-%E2%89%A5120-brightgreen)](https://www.google.com/chrome/)
 [![Tests](https://img.shields.io/badge/tests-49%20passed-success)](#开发者说明)
 [![License](https://img.shields.io/badge/license-unlicensed-lightgrey)](#许可)
 
-![管理页截图](docs/images/manager.png)
+<img src="docs/images/manager.png" width="900" alt="管理页截图">
 
 ## 为什么需要它
 
-小红书的收藏表情只能在手机 App 里看到和发送，**网页版收藏列表里没有**。
-但评论区的表情图片在网页上是可以正常显示的。所以本工具采用一个简单可靠的流程：
+小红书的个人收藏表情只能在手机端APP显示，但无法导出；而网页端可以直接下载评论区表情包，但无法展示个人收藏表情包，评论区逐个下载也较为麻烦。
 
-> 手机端把想导出的表情发到一条帖子评论里 → Mac 浏览器打开帖子 → 扩展收集、预览、导出
+所以本工具旨在通过浏览器插件的形式，将网页端表情包下载/全流程自动化，自动识别指定帖子中评论区所有表情包，并根据个人需求自选对应表情包进行下载，流程如下：
 
-它导出的不是"你的收藏库"，而是**当前笔记评论区里已被渲染的图片**——这一点在界面上会明确说明，不夸大范围。
+> 手机端把想导出的表情发到一条帖子评论里 → Chrome / Edge 浏览器打开帖子 → 扩展收集、预览、导出
+
 
 ## 功能概览
 
@@ -56,20 +55,17 @@ rednote-emoji_<noteId>_<时间戳>/
 **稳定性**
 
 - 下载队列并发 3，瞬时失败自动重试 2 次
-- 401/403 不盲目重试，直接提示回源页面重新加载
-- 429 尊重 `Retry-After` 并暂停整个队列
 - 支持中途取消；刷新管理页后自动恢复可重试状态
 - 多个管理页同时打开时，通过租约只允许一个执行队列，避免重复下载
 - 任务在管理页执行，不依赖 service worker 常驻
 
 ## 下载与安装
 
-> 浏览器扩展无法像普通 App 那样双击直接注册进 Chrome / Edge——这是浏览器的安全策略。
-> 安装包已经把除"在扩展页点一次选择目录"以外的步骤全部自动化。
+> 浏览器扩展无法像普通 App 那样双击直接注册进 Chrome / Edge，需要进行手动在浏览器扩展页导入拓展。
 
 ### macOS（推荐）
 
-1. 下载 `RednoteEmoji-<版本>.dmg`（见 Releases）
+1. 下载 `RednoteEmoji-<版本>.dmg`（见 Releases；若从聊天工具获取不便，也可用同名的 `.zip` 传输后解压，内容相同）
 2. 双击挂载，把「**安装小红书表情包导出**」拖进「应用程序」
 3. 双击运行。首次若提示"无法验证开发者"，请 **右键 → 打开**
 4. 安装程序会：
@@ -89,10 +85,26 @@ rm -rf ~/Library/Application\ Support/RednoteEmoji
 
 并在扩展管理页点「移除」。
 
-### 其它平台 / 手动安装
+### 从源码构建（Windows / Linux / 不想用安装包）
 
-下载 `export-rednote-emoji-<版本>.zip`，解压后在扩展管理页选择「加载已解压的扩展程序」→ 选择解压目录。
-Windows / Linux 同样适用（Chrome 或 Edge ≥ 120）。
+需要 [Node.js](https://nodejs.org/) ≥ 20。
+
+```bash
+git clone <本仓库地址>
+cd export-rednote-emoji
+npm install
+npm run build        # 产物在 dist/
+```
+
+然后在扩展管理页（`chrome://extensions` 或 `edge://extensions`）：
+
+1. 打开右上角「**开发者模式**」
+2. 点击「**加载已解压的扩展程序**」
+3. 选择项目下的 **`dist/`** 目录
+
+> 修改代码后重新执行 `npm run build`，再到扩展管理页点扩展卡片上的「重新加载」即可生效。
+
+卸载：在扩展管理页点「移除」，然后删除克隆下来的仓库目录。
 
 ### 版本要求
 
@@ -104,7 +116,7 @@ Windows / Linux 同样适用（Chrome 或 Edge ≥ 120）。
 ## 使用
 
 1. **手机**：把要导出的收藏表情发到一条方便管理的帖子评论里（可见性遵循平台规则）。
-2. **Mac 浏览器**：打开该帖子，手动展开评论与回复，让目标图片渲染出来。
+2. **浏览器**：打开该帖子，手动展开评论与回复，让目标图片渲染出来。
 3. 点击工具栏扩展图标：
    - 首次会请求读取小红书图片域名（`sns-webpic-qc.xhscdn.com`）的权限，请允许；
    - 自动打开管理页并开始采集，图标角标变为 ●。
@@ -118,20 +130,14 @@ Windows / Linux 同样适用（Chrome 或 Edge ≥ 120）。
 > **管理页打开后评论区消失是正常现象**：切走标签页会让小红书关闭详情弹层、卸载评论 DOM。
 > 已采集的数据已保存在扩展本地，仍可获取与导出；要继续采集，回到小红书页重新展开评论即可。
 
-## 界面
-
-<!-- 建议补充三张截图：采集中的管理页、作者筛选、ZIP 导出完成 -->
-
 ## 已知限制
 
 - **只采集已渲染的内容**：未滚动到的评论、已被虚拟列表移除的评论、采集开始前卸载的评论都不会出现。
   它不等于整帖所有评论，更不等于手机 App 里的收藏库。
 - **动图会被服务端转成静态图**：小红书把评论图片统一转码为 WebP，网页端拿到的通常不含动画帧
-  （两次探针实测 chunk 仅 `VP8X`/`VP8 `/`EXIF`，无 `ANIM`；去掉 URL 后缀直接 403）。
-  手机 App 里能动的表情，网页端往往就是静态帧，本工具只能保存实际获取到的字节，不会用 canvas 录帧伪装。
 - **链接有时效**：图片地址带日期路径段，过期后请求会失败，需回到页面重新加载并重新采集。
 - **单次上限**：每个会话最多 500 个候选；单文件 20 MiB；单次 ZIP 最多 200 张或 100 MiB 原始数据。
-- **连接会中断**：刷新小红书页面、或在 SPA 中切换笔记后，需要重新点击扩展图标开始新会话。
+- **连接中断**：刷新小红书页面、或在 SPA 中切换笔记后，需要重新点击扩展图标开始新会话。
 - 导出的是平台当前提供的字节，**不承诺是上传时的原始分辨率**。
 
 ## 隐私与权限
@@ -153,10 +159,6 @@ Windows / Linux 同样适用（Chrome 或 Edge ≥ 120）。
 - ZIP 的 `manifest.json` 不包含带签名的资源地址、Cookie 或完整评论文本。
 
 ## 常见问题
-
-**Q：为什么不能像其他软件一样双击安装完就能用？**
-A：非商店来源的扩展，Chrome/Edge 强制要求开启开发者模式并手动选择一次目录。
-要做到真正的"一键安装 + 自动更新"，需要上架 Chrome Web Store / Edge 加载项商店，代码无需改动。
 
 **Q：为什么评论区明明有表情，却只采集到一部分？**
 A：只采集"已经出现在页面上"的图片。请在小红书页面继续向下滚动，或在管理页点状态筛选查看。
@@ -203,9 +205,8 @@ npm install
 npm run typecheck   # 类型检查
 npm test            # 49 项单元测试
 npm run build       # 构建扩展到 dist/
-npm run package     # 生成 release/*.zip
 npm run dist:mac    # 生成 macOS 安装包 release/*.dmg
-npm run release     # 构建全部发布产物
+npm run release     # 构建并生成全部发布产物
 npm run build:probe # 构建 P0 探针扩展到 dist-probe/
 ```
 
@@ -221,9 +222,8 @@ npm run build:probe # 构建 P0 探针扩展到 dist-probe/
 npm version patch
 npm run release
 # release/
-#   RednoteEmoji-<版本>.dmg
-#   RednoteEmoji-<版本>.zip
-#   export-rednote-emoji-<版本>.zip
+#   RednoteEmoji-<版本>.dmg   # 双击安装
+#   RednoteEmoji-<版本>.zip   # 同一安装器的打包，仅用于传输
 ```
 
 ## 文档

@@ -1,6 +1,6 @@
 # 安装方式
 
-本项目是浏览器扩展，提供三种安装方式。**浏览器安全策略决定扩展无法像普通软件那样双击直接注册**：
+本项目是浏览器扩展，提供两类安装方式。**浏览器安全策略决定扩展无法像普通软件那样双击直接注册**：
 Chrome / Edge 对非商店来源的扩展一律要求开启“开发者模式”并手动选择一次目录。
 下面的安装包把这一步的准备工作（复制文件、定位路径）全部自动化，你只需在浏览器里点两下。
 
@@ -34,24 +34,18 @@ rm -rf ~/Library/Application\ Support/RednoteEmoji
 
 ---
 
-## 方式二：ZIP 包
-
-**文件**：`release/RednoteEmoji-<版本>.zip`（含安装器）或 `release/export-rednote-emoji_<版本>.zip`（纯扩展）
-
-纯扩展 ZIP 解压后，直接在扩展管理页「加载已解压的扩展程序」选择解压目录即可。
-
----
-
-## 方式三：开发者方式
+## 方式二：从源码构建（Windows / Linux / 开发者）
 
 ```sh
+git clone <本仓库地址>
+cd export-rednote-emoji
 npm install
 npm run build          # 产物 dist/
-npm run package        # 额外生成 release/*.zip
-npm run dist:mac       # 额外生成 macOS 安装包 release/*.dmg
+npm run dist:mac       # 可选：生成 macOS 安装包 release/*.dmg
 ```
 
-然后在 `chrome://extensions` 中加载 `dist/`。
+然后在 `chrome://extensions`（Edge 为 `edge://extensions`）中「加载已解压的扩展程序」→ 选择 `dist/`。
+修改代码后执行 `npm run build`，再在扩展卡片上点「重新加载」。
 
 ---
 
@@ -59,7 +53,7 @@ npm run dist:mac       # 额外生成 macOS 安装包 release/*.dmg
 
 | 方式 | 是否需开发者模式 | 说明 |
 |---|---|---|
-| 解压目录 / 本安装包 | 需要 | 每次加载一次，此后正常使用 |
+| 本安装包 / 源码构建目录 | 需要 | 每次加载一次，此后正常使用 |
 | 拖入 `.crx` | 仍然需要 | Chrome 会拦截非商店来源，且每次启动校验 |
 | Chrome 应用商店 / Edge 加载项商店 | **不需要** | 需开发者账号注册与审核，用户一键安装并自动更新 |
 
