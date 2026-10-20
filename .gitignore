@@ -1,12 +1,15 @@
+# 依赖与构建产物
 node_modules/
 dist/
 dist-probe/
-*.log
-.DS_Store
-docs/PROBE_RESULT.local.json
 release/
 
 # 本地工具配置（含访问令牌，不得提交）
-.claude/settings.local.json
+.claude/
+
 # P0 探针采集结果（含真实笔记链接与用户 ID，仅本地分析）
 docs/rednote-probe-*.json
+
+# 系统与日志
+*.log
+.DS_Store
