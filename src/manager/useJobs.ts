@@ -19,6 +19,12 @@ export interface JobState {
 
 type Listener = (updates: Candidate[]) => void;
 
+/** 调试用：?slow=毫秒 让每张图片之间等待，便于手动测试取消与多管理页租约。 */
+function debugSlowMs(): number {
+  const v = Number(new URLSearchParams(location.search).get('slow'));
+  return Number.isFinite(v) && v > 0 ? Math.min(v, 5000) : 0;
+}
+
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) return reject(new Error('aborted'));
@@ -134,6 +140,8 @@ export function useJobs(onUpdated: Listener, lease: ManagerLease | null = null) 
           }
         }
         setProgress('正在获取图片…');
+        const slow = debugSlowMs();
+        if (slow) await sleep(slow, controller.signal).catch(() => {});
       }
     };
 

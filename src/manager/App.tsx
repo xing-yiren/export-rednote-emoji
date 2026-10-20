@@ -140,6 +140,10 @@ export function App() {
   };
 
   const saveZip = async () => {
+    if (lease && !(await lease.acquire())) {
+      setError('另一个管理页正在执行获取/导出队列，请稍后再试。');
+      return;
+    }
     try {
       setError(null);
       setBusy('zip');
@@ -148,6 +152,7 @@ export function App() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
+      await lease?.release();
       setBusy(null);
     }
   };
