@@ -58,6 +58,6 @@ npm install && npm run build
 ### 校验值（SHA-256）
 
 ```text
-3b6f4270bfaf6bb28dacfaed8b70333adbbf879c2ef8eb8f69e2cd1c036d03dd  RednoteEmoji-0.1.0.dmg
-27587bd21910d7ccb74128e85f5a29be474662cc74483ae87b7fb52f10b172ea  RednoteEmoji-0.1.0.zip
+d231d9ed4aef77767a0b19e0bec511cb879d7de0662dbae08639c9e2b8351327  RednoteEmoji-0.1.0.dmg
+fcf5ecd21989d7863f37b7ad2ecef95f4c6876b0c510b68e097667eb62e3f4b4  RednoteEmoji-0.1.0.zip
 ```
