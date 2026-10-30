@@ -9,8 +9,12 @@
 1. 下载 `RednoteEmoji-0.1.0.dmg`
 2. 双击挂载，把「安装小红书表情包导出」拖进「应用程序」
 3. 双击运行；首次提示"无法验证开发者"时请 **右键 → 打开**
-4. 安装器会把扩展复制到 `~/Library/Application Support/RednoteEmoji/extension`，并打开扩展管理页
-5. 在 `chrome://extensions` 打开「开发者模式」→「加载已解压的扩展程序」→ **⌘⇧G** 粘贴路径 → 选择
+4. 点「继续」：安装器会把扩展复制到 `~/Library/Application Support/RednoteEmoji/extension`，
+   打开扩展页并自动点开「加载已解压的扩展程序」的文件夹对话框
+5. 在对话框里点「选择」即完成；若未全自动完成，在扩展页手动「开发者模式」→「加载已解压」→ 选择该目录
+
+> Chrome / Edge 会拒绝任何非商店来源的 `.crx`，所以没有提供 CRX 包；
+> 想要真正的一键安装与自动更新，需要上架 Chrome Web Store（$5）或 Edge 加载项商店（免费）。
 
 **其它平台 / 从源码构建**
 
