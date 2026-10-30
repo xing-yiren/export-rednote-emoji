@@ -9,7 +9,7 @@
 1. 下载 `RednoteEmoji-0.1.0.dmg`
 2. 双击挂载，把「安装小红书表情包导出」拖进「应用程序」
 3. 双击运行；首次提示"无法验证开发者"时请 **右键 → 打开**
-4. 安装器会把扩展复制到 `~/Library/Application Support/RednoteEmoji/extension`、路径写入剪贴板，并打开扩展管理页
+4. 安装器会把扩展复制到 `~/Library/Application Support/RednoteEmoji/extension`，并打开扩展管理页
 5. 在 `chrome://extensions` 打开「开发者模式」→「加载已解压的扩展程序」→ **⌘⇧G** 粘贴路径 → 选择
 
 **其它平台 / 从源码构建**
